@@ -1,5 +1,10 @@
 package com.tripshare.modelo;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 public class Usuario {
     
     private int idUsuario;
@@ -49,5 +54,66 @@ public String getContrasena() {
 public void setContrasena(String contrasena) {
     this.contrasena = contrasena;
 }
-}
+public static Usuario buscarPorEmail(String email) {
 
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+    Usuario usuario = null;
+
+    try {
+
+        // 1. Conexión con la base de datos
+        conexion = Conexion.conectar();
+        if (conexion == null) {
+        return null;
+        }
+
+        // 2. Preparación de la consulta
+        String sql = "SELECT * FROM usuario WHERE email = ?";
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setString(1, email);
+
+        // 3. Ejecución de la consulta
+        resultado = sentencia.executeQuery();
+
+        // 4. Manipulación de los resultados
+        if (resultado.next()) {
+
+            usuario = new Usuario(
+                resultado.getInt("id_usuario"),
+                resultado.getString("nombre"),
+                resultado.getString("email"),
+                resultado.getString("contrasena")
+            );
+        }
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al buscar el usuario.");
+        e.printStackTrace();
+
+    } finally {
+
+        try {
+            if (resultado != null) {
+                resultado.close();
+            }
+
+            if (sentencia != null) {
+                sentencia.close();
+            }
+
+            if (conexion != null) {
+                conexion.close();
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al cerrar los recursos.");
+            e.printStackTrace();
+        }
+    }
+
+    return usuario;
+}
+}
