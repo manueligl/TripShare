@@ -163,4 +163,52 @@ public boolean insertar() {
         }
     }
 }
+public boolean actualizar() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        String sql = "UPDATE usuario SET nombre = ?, email = ?, contrasena = ? WHERE id_usuario = ?";
+
+        sentencia = conexion.prepareStatement(sql);
+
+        sentencia.setString(1, this.nombre);
+        sentencia.setString(2, this.email);
+        sentencia.setString(3, this.contrasena);
+        sentencia.setInt(4, this.idUsuario);
+
+        int filas = sentencia.executeUpdate();
+
+        return filas > 0;
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al actualizar el usuario.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+
+        try {
+            if (sentencia != null) {
+                sentencia.close();
+            }
+
+            if (conexion != null) {
+                conexion.close();
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
 }
