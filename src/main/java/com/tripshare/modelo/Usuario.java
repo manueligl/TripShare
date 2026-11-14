@@ -116,4 +116,51 @@ public static Usuario buscarPorEmail(String email) {
 
     return usuario;
 }
+public boolean insertar() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        String sql = "INSERT INTO usuario (nombre, email, contrasena) VALUES (?, ?, ?)";
+
+        sentencia = conexion.prepareStatement(sql);
+
+        sentencia.setString(1, this.nombre);
+        sentencia.setString(2, this.email);
+        sentencia.setString(3, this.contrasena);
+
+        int filas = sentencia.executeUpdate();
+
+        return filas > 0;
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al insertar el usuario.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+
+        try {
+            if (sentencia != null) {
+                sentencia.close();
+            }
+
+            if (conexion != null) {
+                conexion.close();
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
 }
