@@ -1,0 +1,12 @@
+# Archivos generados por Maven
+target/
+
+# Archivos de configuración de NetBeans
+nbproject/private/
+
+# Archivos de configuración de VS Code
+.vscode/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
