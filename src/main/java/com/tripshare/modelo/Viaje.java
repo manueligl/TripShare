@@ -1,5 +1,10 @@
 package com.tripshare.modelo;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 
@@ -84,5 +89,207 @@ public int getIdCreador() {
 
 public void setIdCreador(int idCreador) {
     this.idCreador = idCreador;
+}
+public static Viaje buscarPorId(int idViaje) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+    Viaje viaje = null;
+
+    try {
+
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return null;
+        }
+
+        String sql = "SELECT * FROM viaje WHERE id_viaje = ?";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, idViaje);
+
+        resultado = sentencia.executeQuery();
+
+        if (resultado.next()) {
+
+            viaje = new Viaje(
+                resultado.getInt("id_viaje"),
+                resultado.getString("nombre"),
+                resultado.getString("destino"),
+                resultado.getDate("fecha_inicio").toLocalDate(),
+                resultado.getDate("fecha_fin").toLocalDate(),
+                resultado.getBigDecimal("presupuesto"),
+                resultado.getInt("id_creador")
+            );
+        }
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al buscar el viaje.");
+        e.printStackTrace();
+
+    } finally {
+
+        try {
+            if (resultado != null) resultado.close();
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    return viaje;
+}
+public boolean insertar() {
+
+    Connection conexion = null;
+    PreparedStatement sentenciaViaje = null;
+    PreparedStatement sentenciaParticipante = null;
+    PreparedStatement sentenciaId = null;
+    ResultSet resultado = null;
+
+    try {
+
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        // Iniciar transacción
+        conexion.setAutoCommit(false);
+
+        // Insertar el viaje
+        String sqlViaje = "INSERT INTO viaje "
+                + "(nombre, destino, fecha_inicio, fecha_fin, presupuesto, id_creador) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
+
+        sentenciaViaje = conexion.prepareStatement(sqlViaje);
+
+        sentenciaViaje.setString(1, this.nombre);
+        sentenciaViaje.setString(2, this.destino);
+        sentenciaViaje.setDate(3, Date.valueOf(this.fechaInicio));
+        sentenciaViaje.setDate(4, Date.valueOf(this.fechaFin));
+        sentenciaViaje.setBigDecimal(5, this.presupuesto);
+        sentenciaViaje.setInt(6, this.idCreador);
+
+        int filas = sentenciaViaje.executeUpdate();
+
+        if (filas == 0) {
+            conexion.rollback();
+            return false;
+        }
+
+        // Recuperar el ID generado por MySQL
+        sentenciaId = conexion.prepareStatement("SELECT LAST_INSERT_ID()");
+        resultado = sentenciaId.executeQuery();
+
+        if (!resultado.next()) {
+            conexion.rollback();
+            return false;
+        }
+
+        this.idViaje = resultado.getInt(1);
+
+        // Inscribir al creador como participante
+        String sqlParticipante = "INSERT INTO usuario_viaje "
+                + "(id_usuario, id_viaje, fecha_inscripcion, activo) "
+                + "VALUES (?, ?, CURRENT_DATE, TRUE)";
+
+        sentenciaParticipante = conexion.prepareStatement(sqlParticipante);
+
+        sentenciaParticipante.setInt(1, this.idCreador);
+        sentenciaParticipante.setInt(2, this.idViaje);
+
+        int filasParticipante = sentenciaParticipante.executeUpdate();
+
+        if (filasParticipante > 0) {
+            conexion.commit();
+            return true;
+        } else {
+            conexion.rollback();
+            return false;
+        }
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al insertar el viaje.");
+        e.printStackTrace();
+
+        try {
+            if (conexion != null) {
+                conexion.rollback();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
+
+    } finally {
+
+        try {
+            if (resultado != null) resultado.close();
+            if (sentenciaId != null) sentenciaId.close();
+            if (sentenciaParticipante != null) sentenciaParticipante.close();
+            if (sentenciaViaje != null) sentenciaViaje.close();
+
+            if (conexion != null) conexion.close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+public boolean actualizar() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        String sql = "UPDATE viaje SET nombre = ?, destino = ?, "
+                + "fecha_inicio = ?, fecha_fin = ?, presupuesto = ? "
+                + "WHERE id_viaje = ?";
+
+        sentencia = conexion.prepareStatement(sql);
+
+        sentencia.setString(1, this.nombre);
+        sentencia.setString(2, this.destino);
+        sentencia.setDate(3, Date.valueOf(this.fechaInicio));
+        sentencia.setDate(4, Date.valueOf(this.fechaFin));
+        sentencia.setBigDecimal(5, this.presupuesto);
+        sentencia.setInt(6, this.idViaje);
+
+        int filas = sentencia.executeUpdate();
+
+        return filas > 0;
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al actualizar el viaje.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+
+        try {
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }
 }
