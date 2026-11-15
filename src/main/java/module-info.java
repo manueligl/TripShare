@@ -3,6 +3,6 @@ module com.tripshare {
     requires javafx.fxml;
     requires java.sql;
     
-    opens com.tripshare to javafx.fxml;
+    opens com.tripshare.controlador to javafx.fxml;
     exports com.tripshare;
 }
