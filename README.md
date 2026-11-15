@@ -141,5 +141,3 @@ El desarrollo del proyecto se ha gestionado mediante Git y GitHub, utilizando ra
 - `main`
 
 Las integraciones entre ramas se han realizado mediante Pull Requests de GitHub. Las ramas funcionales se integraron en `develop` y, tras comprobar el funcionamiento del proyecto, se integró `develop` en `main`.
-
-**TripShare — Proyecto de Desarrollo de Aplicaciones Multiplataforma (DAM).**
