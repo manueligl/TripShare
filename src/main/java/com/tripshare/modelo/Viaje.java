@@ -145,6 +145,72 @@ public static Viaje buscarPorId(int idViaje) {
 
     return viaje;
 }
+
+
+// Listar los viajes activos de un usuario
+public static ArrayList<Viaje> listarPorUsuario(int idUsuario) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+
+    ArrayList<Viaje> viajes = new ArrayList<>();
+
+    try {
+
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return viajes;
+        }
+
+        String sql = "SELECT v.* FROM viaje v "
+                   + "INNER JOIN usuario_viaje uv "
+                   + "ON v.id_viaje = uv.id_viaje "
+                   + "WHERE uv.id_usuario = ? "
+                   + "AND uv.activo = TRUE "
+                   + "ORDER BY v.fecha_inicio ASC";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, idUsuario);
+
+        resultado = sentencia.executeQuery();
+
+        while (resultado.next()) {
+
+            Viaje viaje = new Viaje(
+                resultado.getInt("id_viaje"),
+                resultado.getString("nombre"),
+                resultado.getString("destino"),
+                resultado.getDate("fecha_inicio").toLocalDate(),
+                resultado.getDate("fecha_fin").toLocalDate(),
+                resultado.getBigDecimal("presupuesto"),
+                resultado.getInt("id_creador")
+            );
+
+            viajes.add(viaje);
+        }
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al listar los viajes del usuario.");
+        e.printStackTrace();
+
+    } finally {
+
+        try {
+            if (resultado != null) resultado.close();
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    return viajes;
+}
+
 public boolean insertar() {
 
     Connection conexion = null;
