@@ -1,6 +1,11 @@
 
 package com.tripshare.modelo;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 
@@ -79,4 +84,157 @@ public class Gasto {
     public void setIdPagador(int idPagador) {
         this.idPagador = idPagador;
     }
+
+    // Buscar un gasto por su ID
+public static Gasto buscarPorId(int idGasto) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+    Gasto gasto = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return null;
+        }
+
+        String sql = "SELECT * FROM gasto WHERE id_gasto = ?";
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, idGasto);
+
+        resultado = sentencia.executeQuery();
+
+        if (resultado.next()) {
+            gasto = new Gasto(
+                resultado.getInt("id_gasto"),
+                resultado.getString("concepto"),
+                resultado.getBigDecimal("importe"),
+                resultado.getDate("fecha").toLocalDate(),
+                resultado.getInt("id_viaje"),
+                resultado.getInt("id_pagador")
+            );
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Error al buscar el gasto.");
+        e.printStackTrace();
+
+    } finally {
+        try {
+            if (resultado != null) resultado.close();
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    return gasto;
+}
+
+
+// Insertar un gasto
+public void insertar() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    PreparedStatement sentenciaId = null;
+    ResultSet resultado = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return;
+        }
+
+        String sql = "INSERT INTO gasto "
+                   + "(concepto, importe, fecha, id_viaje, id_pagador) "
+                   + "VALUES (?, ?, ?, ?, ?)";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setString(1, this.concepto);
+        sentencia.setBigDecimal(2, this.importe);
+        sentencia.setDate(3, Date.valueOf(this.fecha));
+        sentencia.setInt(4, this.idViaje);
+        sentencia.setInt(5, this.idPagador);
+
+        sentencia.executeUpdate();
+
+        // Recuperar el ID generado
+        sentenciaId = conexion.prepareStatement("SELECT LAST_INSERT_ID()");
+        resultado = sentenciaId.executeQuery();
+
+        if (resultado.next()) {
+            this.idGasto = resultado.getInt(1);
+        }
+
+        System.out.println("Gasto insertado correctamente.");
+
+    } catch (SQLException e) {
+        System.out.println("Error al insertar el gasto.");
+        e.printStackTrace();
+
+    } finally {
+        try {
+            if (resultado != null) resultado.close();
+            if (sentenciaId != null) sentenciaId.close();
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+// Actualizar un gasto
+public void actualizar() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return;
+        }
+
+        String sql = "UPDATE gasto SET "
+                   + "concepto = ?, importe = ?, fecha = ?, "
+                   + "id_viaje = ?, id_pagador = ? "
+                   + "WHERE id_gasto = ?";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setString(1, this.concepto);
+        sentencia.setBigDecimal(2, this.importe);
+        sentencia.setDate(3, Date.valueOf(this.fecha));
+        sentencia.setInt(4, this.idViaje);
+        sentencia.setInt(5, this.idPagador);
+        sentencia.setInt(6, this.idGasto);
+
+        int filas = sentencia.executeUpdate();
+
+        if (filas > 0) {
+            System.out.println("Gasto actualizado correctamente.");
+        } else {
+            System.out.println("No se encontró el gasto.");
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Error al actualizar el gasto.");
+        e.printStackTrace();
+
+    } finally {
+        try {
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
 }
