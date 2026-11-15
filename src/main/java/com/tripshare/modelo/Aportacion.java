@@ -212,13 +212,13 @@ public boolean insertar() {
         }
 
         // Calcular la deuda pendiente del emisor
-        BigDecimal saldoEmisor = calcularSaldo(
-                conexion, this.idUsuario, this.idViaje
+       BigDecimal saldoEmisor = calcularSaldo(
+        conexion, this.idUsuario, this.idViaje, 0
         );
 
         // Calcular el saldo pendiente del receptor
         BigDecimal saldoReceptor = calcularSaldo(
-                conexion, this.idReceptor, this.idViaje
+        conexion, this.idReceptor, this.idViaje, 0
         );
 
         if (saldoEmisor == null || saldoReceptor == null) {
@@ -314,44 +314,45 @@ public boolean insertar() {
 
 // Calcular el saldo pendiente de un usuario en un viaje
 private BigDecimal calcularSaldo(
-        Connection conexion, int idUsuario, int idViaje) {
+        Connection conexion, int idUsuario, int idViaje,
+        int idAportacionExcluir) {
 
     PreparedStatement sentencia = null;
     ResultSet resultado = null;
 
     try {
 
-        String sql = "SELECT "
-                + "(SELECT COALESCE(SUM(gp.importe_asignado), 0) "
-                + "FROM gasto_participante gp "
-                + "WHERE gp.id_usuario = ? AND gp.id_viaje = ?) "
+       String sql = "SELECT "
+        + "(SELECT COALESCE(SUM(gp.importe_asignado), 0) "
+        + "FROM gasto_participante gp "
+        + "WHERE gp.id_usuario = ? AND gp.id_viaje = ?) "
 
-                + "- (SELECT COALESCE(SUM(g.importe), 0) "
-                + "FROM gasto g "
-                + "WHERE g.id_pagador = ? AND g.id_viaje = ?) "
+        + "- (SELECT COALESCE(SUM(g.importe), 0) "
+        + "FROM gasto g "
+        + "WHERE g.id_pagador = ? AND g.id_viaje = ?) "
 
-                + "+ (SELECT COALESCE(SUM(a.importe), 0) "
-                + "FROM aportacion a "
-                + "WHERE a.id_usuario = ? AND a.id_viaje = ?) "
+        + "+ (SELECT COALESCE(SUM(a.importe), 0) "
+        + "FROM aportacion a "
+        + "WHERE a.id_usuario = ? AND a.id_viaje = ? "
+        + "AND a.id_aportacion <> ?) "
 
-                + "- (SELECT COALESCE(SUM(a.importe), 0) "
-                + "FROM aportacion a "
-                + "WHERE a.id_receptor = ? AND a.id_viaje = ?) "
-                + "AS saldo";
+        + "- (SELECT COALESCE(SUM(a.importe), 0) "
+        + "FROM aportacion a "
+        + "WHERE a.id_receptor = ? AND a.id_viaje = ? "
+        + "AND a.id_aportacion <> ?) AS saldo";
 
         sentencia = conexion.prepareStatement(sql);
 
         sentencia.setInt(1, idUsuario);
         sentencia.setInt(2, idViaje);
-
         sentencia.setInt(3, idUsuario);
         sentencia.setInt(4, idViaje);
-
         sentencia.setInt(5, idUsuario);
         sentencia.setInt(6, idViaje);
-
-        sentencia.setInt(7, idUsuario);
-        sentencia.setInt(8, idViaje);
+        sentencia.setInt(7, idAportacionExcluir);
+        sentencia.setInt(8, idUsuario);
+        sentencia.setInt(9, idViaje);
+        sentencia.setInt(10, idAportacionExcluir);
 
         resultado = sentencia.executeQuery();
 
@@ -378,46 +379,135 @@ private BigDecimal calcularSaldo(
 }
 
 
-// Actualizar una aportación
-public void actualizar() {
+// Actualizar una aportación manteniendo las validaciones
+public boolean actualizar() {
 
     Connection conexion = null;
+    PreparedStatement sentenciaParticipantes = null;
     PreparedStatement sentencia = null;
+    ResultSet resultado = null;
 
     try {
+
+        if (this.idAportacion <= 0 || this.importe == null
+                || this.importe.compareTo(BigDecimal.ZERO) <= 0
+                || this.fecha == null) {
+            return false;
+        }
+
         conexion = Conexion.conectar();
 
         if (conexion == null) {
-            return;
+            return false;
         }
 
-        String sql = "UPDATE aportacion SET "
-                   + "id_usuario = ?, id_receptor = ?, id_viaje = ?, "
-                   + "importe = ?, fecha = ? "
+        conexion.setAutoCommit(false);
+
+        // Bloquear los registros de ambos participantes
+        String sqlParticipantes =
+                "SELECT id_usuario, activo FROM usuario_viaje "
+              + "WHERE id_viaje = ? AND id_usuario IN (?, ?) "
+              + "ORDER BY id_usuario FOR UPDATE";
+
+        sentenciaParticipantes = conexion.prepareStatement(sqlParticipantes);
+        sentenciaParticipantes.setInt(1, this.idViaje);
+        sentenciaParticipantes.setInt(2, this.idUsuario);
+        sentenciaParticipantes.setInt(3, this.idReceptor);
+
+        resultado = sentenciaParticipantes.executeQuery();
+
+        boolean emisorActivo = false;
+        boolean receptorActivo = false;
+
+        while (resultado.next()) {
+            int id = resultado.getInt("id_usuario");
+            boolean activo = resultado.getBoolean("activo");
+
+            if (id == this.idUsuario && activo) {
+                emisorActivo = true;
+            }
+
+            if (id == this.idReceptor && activo) {
+                receptorActivo = true;
+            }
+        }
+
+        resultado.close();
+        resultado = null;
+        sentenciaParticipantes.close();
+        sentenciaParticipantes = null;
+
+        if (!emisorActivo || !receptorActivo
+                || this.idUsuario == this.idReceptor) {
+            conexion.rollback();
+            return false;
+        }
+
+        // Calcular los saldos excluyendo la aportación actual
+        BigDecimal saldoEmisor = calcularSaldo(
+                conexion, this.idUsuario, this.idViaje, this.idAportacion
+        );
+
+        BigDecimal saldoReceptor = calcularSaldo(
+                conexion, this.idReceptor, this.idViaje, this.idAportacion
+        );
+
+        if (saldoEmisor == null || saldoReceptor == null) {
+            conexion.rollback();
+            return false;
+        }
+
+        if (saldoEmisor.compareTo(BigDecimal.ZERO) <= 0
+                || saldoReceptor.compareTo(BigDecimal.ZERO) >= 0
+                || this.importe.compareTo(saldoEmisor) > 0
+                || this.importe.compareTo(saldoReceptor.abs()) > 0) {
+
+            conexion.rollback();
+            System.out.println("El importe supera el saldo pendiente.");
+            return false;
+        }
+
+        // Actualizar únicamente importe y fecha
+        String sql = "UPDATE aportacion SET importe = ?, fecha = ? "
                    + "WHERE id_aportacion = ?";
 
         sentencia = conexion.prepareStatement(sql);
-        sentencia.setInt(1, this.idUsuario);
-        sentencia.setInt(2, this.idReceptor);
-        sentencia.setInt(3, this.idViaje);
-        sentencia.setBigDecimal(4, this.importe);
-        sentencia.setDate(5, Date.valueOf(this.fecha));
-        sentencia.setInt(6, this.idAportacion);
+        sentencia.setBigDecimal(1, this.importe);
+        sentencia.setDate(2, Date.valueOf(this.fecha));
+        sentencia.setInt(3, this.idAportacion);
 
         int filas = sentencia.executeUpdate();
 
-        if (filas > 0) {
-            System.out.println("Aportación actualizada correctamente.");
-        } else {
-            System.out.println("No se encontró la aportación.");
+        if (filas == 0) {
+            conexion.rollback();
+            return false;
         }
 
+        conexion.commit();
+
+        System.out.println("Aportación actualizada correctamente.");
+        return true;
+
     } catch (SQLException e) {
+
         System.out.println("Error al actualizar la aportación.");
         e.printStackTrace();
 
-    } finally {
         try {
+            if (conexion != null) {
+                conexion.rollback();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
+
+    } finally {
+
+        try {
+            if (resultado != null) resultado.close();
+            if (sentenciaParticipantes != null) sentenciaParticipantes.close();
             if (sentencia != null) sentencia.close();
             if (conexion != null) conexion.close();
         } catch (SQLException e) {
