@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 
 public class Viaje {
 
@@ -287,6 +288,171 @@ public boolean actualizar() {
             if (sentencia != null) sentencia.close();
             if (conexion != null) conexion.close();
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+// Agregar un participante al viaje
+public boolean agregarParticipante(int idUsuario) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        // Comprobar si el usuario ya está inscrito
+        String sqlComprobar = "SELECT activo FROM usuario_viaje "
+                            + "WHERE id_usuario = ? AND id_viaje = ?";
+
+        sentencia = conexion.prepareStatement(sqlComprobar);
+        sentencia.setInt(1, idUsuario);
+        sentencia.setInt(2, this.idViaje);
+
+        ResultSet resultado = sentencia.executeQuery();
+
+        if (resultado.next()) {
+            resultado.close();
+            sentencia.close();
+
+            // Si ya estaba inscrito, reactivar su participación
+            String sqlActualizar = "UPDATE usuario_viaje SET activo = TRUE "
+                                 + "WHERE id_usuario = ? AND id_viaje = ?";
+
+            sentencia = conexion.prepareStatement(sqlActualizar);
+            sentencia.setInt(1, idUsuario);
+            sentencia.setInt(2, this.idViaje);
+
+            return sentencia.executeUpdate() > 0;
+        }
+
+        resultado.close();
+        sentencia.close();
+
+        // Si no estaba inscrito, crear la inscripción
+        String sqlInsertar = "INSERT INTO usuario_viaje "
+                           + "(id_usuario, id_viaje, fecha_inscripcion, activo) "
+                           + "VALUES (?, ?, CURRENT_DATE, TRUE)";
+
+        sentencia = conexion.prepareStatement(sqlInsertar);
+        sentencia.setInt(1, idUsuario);
+        sentencia.setInt(2, this.idViaje);
+
+        return sentencia.executeUpdate() > 0;
+
+    } catch (SQLException e) {
+        System.out.println("Error al agregar el participante.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+        try {
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+// Listar los participantes activos del viaje
+public ArrayList<Usuario> listarParticipantes() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+
+    ArrayList<Usuario> participantes = new ArrayList<>();
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return participantes;
+        }
+
+        String sql = "SELECT u.* FROM usuario u "
+                   + "INNER JOIN usuario_viaje uv "
+                   + "ON u.id_usuario = uv.id_usuario "
+                   + "WHERE uv.id_viaje = ? AND uv.activo = TRUE";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, this.idViaje);
+
+        resultado = sentencia.executeQuery();
+
+        while (resultado.next()) {
+            Usuario usuario = new Usuario(
+                resultado.getInt("id_usuario"),
+                resultado.getString("nombre"),
+                resultado.getString("email"),
+                resultado.getString("contrasena")
+            );
+
+            participantes.add(usuario);
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Error al listar los participantes.");
+        e.printStackTrace();
+
+    } finally {
+        try {
+            if (resultado != null) resultado.close();
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    return participantes;
+}
+
+
+// Dar de baja a un participante sin eliminar su historial
+public boolean darDeBajaParticipante(int idUsuario) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        // No permitir que el creador abandone su propio viaje
+        if (idUsuario == this.idCreador) {
+            System.out.println("El creador no puede darse de baja del viaje.");
+            return false;
+        }
+
+        String sql = "UPDATE usuario_viaje SET activo = FALSE "
+                   + "WHERE id_usuario = ? AND id_viaje = ? AND activo = TRUE";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, idUsuario);
+        sentencia.setInt(2, this.idViaje);
+
+        return sentencia.executeUpdate() > 0;
+
+    } catch (SQLException e) {
+        System.out.println("Error al dar de baja al participante.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+        try {
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
