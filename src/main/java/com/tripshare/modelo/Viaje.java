@@ -458,4 +458,139 @@ public boolean darDeBajaParticipante(int idUsuario) {
         }
     }
 }
+// Agregar una actividad al viaje
+public boolean agregarActividad(int idActividad) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        String sql = "INSERT INTO viaje_actividad (id_viaje, id_actividad) "
+                   + "VALUES (?, ?)";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, this.idViaje);
+        sentencia.setInt(2, idActividad);
+
+        int filas = sentencia.executeUpdate();
+
+        return filas > 0;
+
+    } catch (SQLException e) {
+        System.out.println("Error al agregar la actividad al viaje.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+        try {
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+// Listar las actividades asociadas al viaje
+public ArrayList<Actividad> listarActividades() {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+
+    ArrayList<Actividad> actividades = new ArrayList<>();
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return actividades;
+        }
+
+        String sql = "SELECT a.* FROM actividad a "
+                   + "INNER JOIN viaje_actividad va "
+                   + "ON a.id_actividad = va.id_actividad "
+                   + "WHERE va.id_viaje = ?";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, this.idViaje);
+
+        resultado = sentencia.executeQuery();
+
+        while (resultado.next()) {
+
+            Actividad actividad = new Actividad(
+                resultado.getInt("id_actividad"),
+                resultado.getString("nombre"),
+                resultado.getString("descripcion"),
+                resultado.getDate("fecha").toLocalDate(),
+                resultado.getBigDecimal("precio")
+            );
+
+            actividades.add(actividad);
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Error al listar las actividades del viaje.");
+        e.printStackTrace();
+
+    } finally {
+        try {
+            if (resultado != null) resultado.close();
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    return actividades;
+}
+
+
+// Eliminar la asociación entre una actividad y un viaje
+public boolean eliminarActividad(int idActividad) {
+
+    Connection conexion = null;
+    PreparedStatement sentencia = null;
+
+    try {
+        conexion = Conexion.conectar();
+
+        if (conexion == null) {
+            return false;
+        }
+
+        String sql = "DELETE FROM viaje_actividad "
+                   + "WHERE id_viaje = ? AND id_actividad = ?";
+
+        sentencia = conexion.prepareStatement(sql);
+        sentencia.setInt(1, this.idViaje);
+        sentencia.setInt(2, idActividad);
+
+        int filas = sentencia.executeUpdate();
+
+        return filas > 0;
+
+    } catch (SQLException e) {
+        System.out.println("Error al eliminar la actividad del viaje.");
+        e.printStackTrace();
+        return false;
+
+    } finally {
+        try {
+            if (sentencia != null) sentencia.close();
+            if (conexion != null) conexion.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
 }
