@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.tripshare.controlador.DetallesViajeController"
+            prefWidth="1000.0"
+            prefHeight="700.0"
+            style="-fx-background-color: #F1F5F9;">
+
+    <top>
+        <HBox alignment="CENTER_LEFT"
+              spacing="20"
+              style="-fx-background-color: white; -fx-padding: 18 35 18 35;">
+
+            <Label text="TripShare"
+                   style="-fx-font-size: 25px; -fx-font-weight: bold; -fx-text-fill: #2563EB;"/>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Button text="Volver a mis viajes"
+                    onAction="#volverMisViajes"
+                    style="-fx-background-color: #E2E8F0; -fx-text-fill: #334155; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 18;"/>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="22"
+              alignment="TOP_CENTER"
+              style="-fx-padding: 30 45 30 45;">
+
+            <VBox spacing="8"
+                  alignment="CENTER_LEFT"
+                  maxWidth="900">
+
+                <Label text="Detalles del viaje"
+                       style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #1E293B;"/>
+
+                <Label text="Consulta la información y los participantes de tu viaje."
+                       style="-fx-font-size: 14px; -fx-text-fill: #64748B;"/>
+            </VBox>
+
+            <!-- Información general -->
+            <VBox spacing="16"
+                  maxWidth="900"
+                  style="-fx-background-color: white; -fx-background-radius: 12; -fx-padding: 25;">
+
+                <Label fx:id="nombreViajeLabel"
+                       text="Nombre del viaje"
+                       style="-fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #1E293B;"/>
+
+                <Label fx:id="destinoLabel"
+                       text="Destino"
+                       style="-fx-font-size: 16px; -fx-text-fill: #64748B;"/>
+
+                <Separator/>
+
+                <GridPane hgap="35" vgap="15">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <VBox spacing="5"
+                          GridPane.columnIndex="0"
+                          GridPane.rowIndex="0">
+
+                        <Label text="FECHA DE INICIO"
+                               style="-fx-font-size: 11px; -fx-text-fill: #94A3B8; -fx-font-weight: bold;"/>
+
+                        <Label fx:id="fechaInicioLabel"
+                               text="00/00/0000"
+                               style="-fx-font-size: 15px; -fx-text-fill: #334155;"/>
+                    </VBox>
+
+                    <VBox spacing="5"
+                          GridPane.columnIndex="1"
+                          GridPane.rowIndex="0">
+
+                        <Label text="FECHA DE FIN"
+                               style="-fx-font-size: 11px; -fx-text-fill: #94A3B8; -fx-font-weight: bold;"/>
+
+                        <Label fx:id="fechaFinLabel"
+                               text="00/00/0000"
+                               style="-fx-font-size: 15px; -fx-text-fill: #334155;"/>
+                    </VBox>
+
+                    <VBox spacing="5"
+                          GridPane.columnIndex="0"
+                          GridPane.rowIndex="1">
+
+                        <Label text="PRESUPUESTO"
+                               style="-fx-font-size: 11px; -fx-text-fill: #94A3B8; -fx-font-weight: bold;"/>
+
+                        <Label fx:id="presupuestoLabel"
+                               text="0 €"
+                               style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #15966A;"/>
+                    </VBox>
+                </GridPane>
+            </VBox>
+
+            <!-- Participantes -->
+            <VBox spacing="12"
+                  maxWidth="900"
+                  style="-fx-background-color: white; -fx-background-radius: 12; -fx-padding: 25;">
+
+                <HBox alignment="CENTER_LEFT" spacing="10">
+
+                    <Label text="Participantes"
+                           style="-fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: #1E293B;"/>
+
+                    <Label fx:id="contadorParticipantesLabel"
+                           text="0 participantes"
+                           style="-fx-font-size: 12px; -fx-text-fill: #64748B;"/>
+                </HBox>
+
+                <Separator/>
+
+                <VBox fx:id="participantesContainer"
+                      spacing="10"/>
+
+                <Label fx:id="mensajeParticipantesLabel"
+                       text="Todavía no hay participantes."
+                       style="-fx-font-size: 13px; -fx-text-fill: #94A3B8;"/>
+            </VBox>
+
+            <!-- Actividades -->
+            <VBox spacing="12"
+                  maxWidth="900"
+                  style="-fx-background-color: white; -fx-background-radius: 12; -fx-padding: 25;">
+
+                <Label text="Actividades"
+                       style="-fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: #1E293B;"/>
+
+                <Separator/>
+
+                <VBox fx:id="actividadesContainer"
+                      spacing="10"/>
+
+                <Label fx:id="mensajeActividadesLabel"
+                       text="Todavía no hay actividades."
+                       style="-fx-font-size: 13px; -fx-text-fill: #94A3B8;"/>
+            </VBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>

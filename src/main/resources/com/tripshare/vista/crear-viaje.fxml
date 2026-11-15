@@ -1,0 +1,111 @@
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.tripshare.controlador.CrearViajeController"
+            prefWidth="1000" prefHeight="700"
+            style="-fx-background-color: #F3F6FA;">
+
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="12"
+              style="-fx-background-color: white; -fx-padding: 18 45 18 45;">
+
+            <Label text="✈"
+                   style="-fx-font-size: 27px; -fx-text-fill: #2878D0;"/>
+
+            <Label text="TripShare"
+                   style="-fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox alignment="CENTER" spacing="18"
+              style="-fx-padding: 30;">
+
+            <VBox maxWidth="520" spacing="18"
+                  style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 35; -fx-effect: dropshadow(gaussian, #00000018, 15, 0, 0, 4);">
+
+                <Label text="Crear un viaje"
+                       style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+
+                <Label text="Completa los datos para organizar tu próxima aventura."
+                       wrapText="true"
+                       style="-fx-font-size: 13px; -fx-text-fill: #718096;"/>
+
+                <VBox spacing="6">
+                    <Label text="Nombre del viaje"
+                           style="-fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+                    <TextField fx:id="nombreField"
+                               promptText="Ej. Vacaciones de verano"
+                               style="-fx-background-color: #F6F8FB; -fx-background-radius: 7; -fx-border-color: #DCE5F0; -fx-border-radius: 7; -fx-padding: 10;"/>
+                </VBox>
+
+                <VBox spacing="6">
+                    <Label text="Destino"
+                           style="-fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+                    <TextField fx:id="destinoField"
+                               promptText="Ej. Roma, Italia"
+                               style="-fx-background-color: #F6F8FB; -fx-background-radius: 7; -fx-border-color: #DCE5F0; -fx-border-radius: 7; -fx-padding: 10;"/>
+                </VBox>
+
+                <GridPane hgap="15" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <Label text="Fecha de inicio"
+                           GridPane.columnIndex="0"
+                           GridPane.rowIndex="0"
+                           style="-fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+
+                    <Label text="Fecha de finalización"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="0"
+                           style="-fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+
+                    <DatePicker fx:id="fechaInicioPicker"
+                                promptText="Inicio"
+                                maxWidth="Infinity"
+                                GridPane.columnIndex="0"
+                                GridPane.rowIndex="1"/>
+
+                    <DatePicker fx:id="fechaFinPicker"
+                                promptText="Finalización"
+                                maxWidth="Infinity"
+                                GridPane.columnIndex="1"
+                                GridPane.rowIndex="1"/>
+                </GridPane>
+
+                <VBox spacing="6">
+                    <Label text="Presupuesto (€)"
+                           style="-fx-font-weight: bold; -fx-text-fill: #25364A;"/>
+                    <TextField fx:id="presupuestoField"
+                               promptText="Ej. 1500.00"
+                               style="-fx-background-color: #F6F8FB; -fx-background-radius: 7; -fx-border-color: #DCE5F0; -fx-border-radius: 7; -fx-padding: 10;"/>
+                </VBox>
+
+                <Button text="Crear viaje"
+                        onAction="#guardarViaje"
+                        maxWidth="Infinity"
+                        style="-fx-background-color: #2878D0; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand;"/>
+
+                <Button text="Cancelar y volver"
+                        onAction="#cancelar"
+                        maxWidth="Infinity"
+                        style="-fx-background-color: transparent; -fx-text-fill: #2878D0; -fx-font-size: 13px; -fx-font-weight: bold; -fx-cursor: hand;"/>
+            </VBox>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER"
+              style="-fx-background-color: white; -fx-padding: 15;">
+            <Label text="© 2026 TripShare - Viajar es mejor compartido"
+                   style="-fx-font-size: 11px; -fx-text-fill: #94A3B8;"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
