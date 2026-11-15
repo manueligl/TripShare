@@ -135,21 +135,121 @@ public static Aportacion buscarPorId(int idAportacion) {
 }
 
 
-// Insertar una aportación
-public void insertar() {
+// Registrar una aportación validando las deudas y los saldos
+public boolean insertar() {
 
     Connection conexion = null;
+    PreparedStatement sentenciaParticipantes = null;
     PreparedStatement sentencia = null;
     PreparedStatement sentenciaId = null;
     ResultSet resultado = null;
+    ResultSet resultadoId = null;
 
     try {
+
+        // Validar los datos básicos
+        if (this.idUsuario == this.idReceptor
+                || this.idUsuario <= 0
+                || this.idReceptor <= 0
+                || this.idViaje <= 0
+                || this.importe == null
+                || this.importe.compareTo(BigDecimal.ZERO) <= 0
+                || this.fecha == null) {
+
+            System.out.println("Los datos de la aportación no son válidos.");
+            return false;
+        }
+
         conexion = Conexion.conectar();
 
         if (conexion == null) {
-            return;
+            return false;
         }
 
+        conexion.setAutoCommit(false);
+
+        // Comprobar que ambos usuarios están activos en el viaje.
+        // Se bloquean sus registros para evitar aportaciones simultáneas.
+        String sqlParticipantes =
+                "SELECT id_usuario, activo FROM usuario_viaje "
+              + "WHERE id_viaje = ? AND id_usuario IN (?, ?) "
+              + "ORDER BY id_usuario FOR UPDATE";
+
+        sentenciaParticipantes = conexion.prepareStatement(sqlParticipantes);
+        sentenciaParticipantes.setInt(1, this.idViaje);
+        sentenciaParticipantes.setInt(2, this.idUsuario);
+        sentenciaParticipantes.setInt(3, this.idReceptor);
+
+        resultado = sentenciaParticipantes.executeQuery();
+
+        boolean emisorActivo = false;
+        boolean receptorActivo = false;
+
+        while (resultado.next()) {
+
+            int id = resultado.getInt("id_usuario");
+            boolean activo = resultado.getBoolean("activo");
+
+            if (id == this.idUsuario && activo) {
+                emisorActivo = true;
+            }
+
+            if (id == this.idReceptor && activo) {
+                receptorActivo = true;
+            }
+        }
+
+        resultado.close();
+        resultado = null;
+
+        sentenciaParticipantes.close();
+        sentenciaParticipantes = null;
+
+        if (!emisorActivo || !receptorActivo) {
+            conexion.rollback();
+            System.out.println("Ambos usuarios deben estar activos en el viaje.");
+            return false;
+        }
+
+        // Calcular la deuda pendiente del emisor
+        BigDecimal saldoEmisor = calcularSaldo(
+                conexion, this.idUsuario, this.idViaje
+        );
+
+        // Calcular el saldo pendiente del receptor
+        BigDecimal saldoReceptor = calcularSaldo(
+                conexion, this.idReceptor, this.idViaje
+        );
+
+        if (saldoEmisor == null || saldoReceptor == null) {
+            conexion.rollback();
+            return false;
+        }
+
+        // El emisor debe tener una deuda pendiente
+        if (saldoEmisor.compareTo(BigDecimal.ZERO) <= 0) {
+            conexion.rollback();
+            System.out.println("El emisor no tiene ninguna deuda pendiente.");
+            return false;
+        }
+
+        // El receptor debe tener dinero pendiente de recibir
+        if (saldoReceptor.compareTo(BigDecimal.ZERO) >= 0) {
+            conexion.rollback();
+            System.out.println("El receptor no tiene saldo pendiente de recibir.");
+            return false;
+        }
+
+        // Comprobar los límites de la aportación
+        if (this.importe.compareTo(saldoEmisor) > 0
+                || this.importe.compareTo(saldoReceptor.abs()) > 0) {
+
+            conexion.rollback();
+            System.out.println("El importe supera el saldo pendiente.");
+            return false;
+        }
+
+        // Insertar la aportación
         String sql = "INSERT INTO aportacion "
                    + "(id_usuario, id_receptor, id_viaje, importe, fecha) "
                    + "VALUES (?, ?, ?, ?, ?)";
@@ -161,32 +261,120 @@ public void insertar() {
         sentencia.setBigDecimal(4, this.importe);
         sentencia.setDate(5, Date.valueOf(this.fecha));
 
-        sentencia.executeUpdate();
+        int filas = sentencia.executeUpdate();
+
+        if (filas == 0) {
+            conexion.rollback();
+            return false;
+        }
 
         // Recuperar el ID generado
         sentenciaId = conexion.prepareStatement("SELECT LAST_INSERT_ID()");
-        resultado = sentenciaId.executeQuery();
+        resultadoId = sentenciaId.executeQuery();
 
-        if (resultado.next()) {
-            this.idAportacion = resultado.getInt(1);
+        if (resultadoId.next()) {
+            this.idAportacion = resultadoId.getInt(1);
         }
 
-        System.out.println("Aportación insertada correctamente.");
+        conexion.commit();
+
+        System.out.println("Aportación registrada correctamente.");
+        return true;
 
     } catch (SQLException e) {
-        System.out.println("Error al insertar la aportación.");
+
+        System.out.println("Error al registrar la aportación.");
         e.printStackTrace();
 
+        try {
+            if (conexion != null) {
+                conexion.rollback();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
+
     } finally {
+
         try {
             if (resultado != null) resultado.close();
-            if (sentenciaId != null) sentenciaId.close();
+            if (resultadoId != null) resultadoId.close();
+            if (sentenciaParticipantes != null) sentenciaParticipantes.close();
             if (sentencia != null) sentencia.close();
+            if (sentenciaId != null) sentenciaId.close();
             if (conexion != null) conexion.close();
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+}
+
+// Calcular el saldo pendiente de un usuario en un viaje
+private BigDecimal calcularSaldo(
+        Connection conexion, int idUsuario, int idViaje) {
+
+    PreparedStatement sentencia = null;
+    ResultSet resultado = null;
+
+    try {
+
+        String sql = "SELECT "
+                + "(SELECT COALESCE(SUM(gp.importe_asignado), 0) "
+                + "FROM gasto_participante gp "
+                + "WHERE gp.id_usuario = ? AND gp.id_viaje = ?) "
+
+                + "- (SELECT COALESCE(SUM(g.importe), 0) "
+                + "FROM gasto g "
+                + "WHERE g.id_pagador = ? AND g.id_viaje = ?) "
+
+                + "+ (SELECT COALESCE(SUM(a.importe), 0) "
+                + "FROM aportacion a "
+                + "WHERE a.id_usuario = ? AND a.id_viaje = ?) "
+
+                + "- (SELECT COALESCE(SUM(a.importe), 0) "
+                + "FROM aportacion a "
+                + "WHERE a.id_receptor = ? AND a.id_viaje = ?) "
+                + "AS saldo";
+
+        sentencia = conexion.prepareStatement(sql);
+
+        sentencia.setInt(1, idUsuario);
+        sentencia.setInt(2, idViaje);
+
+        sentencia.setInt(3, idUsuario);
+        sentencia.setInt(4, idViaje);
+
+        sentencia.setInt(5, idUsuario);
+        sentencia.setInt(6, idViaje);
+
+        sentencia.setInt(7, idUsuario);
+        sentencia.setInt(8, idViaje);
+
+        resultado = sentencia.executeQuery();
+
+        if (resultado.next()) {
+            return resultado.getBigDecimal("saldo");
+        }
+
+    } catch (SQLException e) {
+
+        System.out.println("Error al calcular el saldo.");
+        e.printStackTrace();
+
+    } finally {
+
+        try {
+            if (resultado != null) resultado.close();
+            if (sentencia != null) sentencia.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    return null;
 }
 
 
